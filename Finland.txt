@@ -1,0 +1,46 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import sqlite3
+
+
+conn = sqlite3.connect('test.db')
+
+
+def getPrice(url):
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:81.0) Gecko/20100101 Firefox/81.0'}
+    request = requests.get(url, headers=headers)
+    soup = BeautifulSoup(request.content, 'html.parser')
+
+	price_table = soup.find_all("table", attrs={"id": "datatable"})
+	table1 = price_table[0]
+	body = table1.find_all("tr")
+	head = body[0]
+	body_rows = body[1:]
+
+	headings = []
+	for item in head.find_all("th"): 
+    		item = (item.text).rstrip("\n")
+		headings.append(item)
+
+	all_rows = [] 
+	for row_num in range(len(body_rows)): 
+    		row = [] 
+    		for row_item in body_rows[row_num].find_all("td"): 
+        		row.append(row_item.text)
+    		all_rows.append(row)
+
+	df = pd.DataFrame(data=all_rows,columns=headings)
+	df.head()
+	df.to_sql('price_table', conn, if_exists='replace', index=False)
+	pd.read_sql('select * from price_table', conn)
+
+
+
+    return
+
+
+
+getPrice('https://www.nordpoolgroup.com/Market-data1/Dayahead/Area-Prices/FI/Hourly/?view=table')
+
+conn.close()
